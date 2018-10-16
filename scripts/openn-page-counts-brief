@@ -17,7 +17,7 @@ require 'csv'
 # 1,0001/ljsmisc2,ljsmisc2,2014-11-03T23:42:45+00:00,2015-04-22T15:17:07+00:00,2
 #
 
-OPENN_DATA_PATH = "http://openn2.library.upenn.edu/Data"
+OPENN_DATA_PATH = "http://openn.library.upenn.edu/Data"
 
 ##
 # Get the number of master images associated with the object by counting them
