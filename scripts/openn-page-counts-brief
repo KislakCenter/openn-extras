@@ -8,13 +8,13 @@ require 'csv'
 # the repositories online document and rewrite it in brief format appending
 # the page counts. Output CSV will have this format:
 #
-# id,path,base_dir,created,updated,icount
-# 1,0001/ljs103,ljs103,2014-11-03T23:13:18+00:00,2015-04-22T15:17:04+00:00,4
-# 1,0001/ljs201,ljs201,2014-11-03T23:38:42+00:00,2015-04-22T15:17:05+00:00,2
-# 1,0001/ljs255,ljs255,2014-11-03T23:39:46+00:00,2015-04-22T15:17:06+00:00,2
-# 1,0001/ljs489,ljs489,2014-11-03T23:40:23+00:00,2015-04-22T15:17:07+00:00,2
-# 1,0001/ljsmisc1,ljsmisc1,2014-11-03T23:41:42+00:00,2015-04-22T15:17:07+00:00,2
-# 1,0001/ljsmisc2,ljsmisc2,2014-11-03T23:42:45+00:00,2015-04-22T15:17:07+00:00,2
+# id,path,base_dir,created,updated,icount,directive_name
+# 1,0001/ljs103,ljs103,2014-11-03T23:13:18+00:00,2015-04-22T15:17:04+00:00,4,ljs103
+# 1,0001/ljs201,ljs201,2014-11-03T23:38:42+00:00,2015-04-22T15:17:05+00:00,2,ljs201
+# 1,0001/ljs255,ljs255,2014-11-03T23:39:46+00:00,2015-04-22T15:17:06+00:00,2,ljs255
+# 1,0001/ljs489,ljs489,2014-11-03T23:40:23+00:00,2015-04-22T15:17:07+00:00,2,ljs489
+# 1,0001/ljsmisc1,ljsmisc1,2014-11-03T23:41:42+00:00,2015-04-22T15:17:07+00:00,2,ljsmisc1
+# 1,0001/ljsmisc2,ljsmisc2,2014-11-03T23:42:45+00:00,2015-04-22T15:17:07+00:00,2,ljsmisc2
 #
 
 OPENN_DATA_PATH = "http://openn.library.upenn.edu/Data"
@@ -50,7 +50,7 @@ out_csv = sprintf("%04d_contents_brief.csv", repo_number)
 
 print "Writing: #{out_csv}..."
 
-header = %w{id path base_dir created updated icount}
+header = %w{id path base_dir created updated icount directive_name}
 
 CSV.open out_csv, 'wb+', headers: true do |csv|
   csv << header
@@ -62,6 +62,7 @@ CSV.open out_csv, 'wb+', headers: true do |csv|
     out_row << File.basename(row['path'])
     out_row << row['created'] << row['updated']
     out_row << get_page_count(path)
+    out_row << File.basename(row['path'])
 
     csv << out_row
   end
