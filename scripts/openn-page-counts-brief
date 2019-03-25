@@ -2,6 +2,7 @@
 
 require 'open-uri'
 require 'csv'
+require 'net/http'
 
 ##
 # For a given repository number (0001, 0002, 0003, etc.), pull down the CSV of
@@ -18,6 +19,26 @@ require 'csv'
 #
 
 OPENN_DATA_PATH = "http://openn.library.upenn.edu/Data"
+MANIFEST_NAMES = %w{ manifest-sha1.txt manifest-md5.txt }.freeze
+
+##
+# Return true if the url yields a 200 response code
+def url_exists? url
+  url = URI.parse(url)
+  req = Net::HTTP.new(url.host, url.port)
+  req.use_ssl = true if url =~ /\Ahttps/
+  res = req.request_head(url.path)
+  res.code == '200'
+end
+
+##
+# Get the manifest for the given manuscript.
+#
+def find_manifest_url object_path
+  MANIFEST_NAMES.map { |p|
+    sprintf "%s/%s/%s", OPENN_DATA_PATH, object_path, p
+  }.find { |url| url_exists? url }
+end
 
 ##
 # Get the number of master images associated with the object by counting them
@@ -27,12 +48,12 @@ OPENN_DATA_PATH = "http://openn.library.upenn.edu/Data"
 #                 directory; e.g., '0001/ljs103'
 # @return [Integer]
 def get_page_count object_path
-  manifest_uri = sprintf "%s/%s/manifest-sha1.txt", OPENN_DATA_PATH, object_path
+  manifest_uri = find_manifest_url object_path
+  raise "No manifest found for #{object_path}" unless manifest_uri
   manifest = open(manifest_uri).readlines
   # count the TIFFs or JPEGs in the `data/master` subdirectory
   manifest.grep(%r{\s+data/master/.+\.(tif|jpg)$}).size
 end
-
 repo_number = ARGV.shift
 
 abort "Please provide a collection number; got: #{repo_number}" unless repo_number =~ /\A\d+\Z/
