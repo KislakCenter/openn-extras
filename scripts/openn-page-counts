@@ -33,7 +33,8 @@ def url_exists? url
 end
 
 ##
-# Get the manifest for the given manuscript.
+# Find the manifest for the given manuscript by looking for manifest name,
+# from {MANIFEST_NAMES}, on OPenn in the +object_path+.
 #
 def find_manifest_url object_path
   MANIFEST_NAMES.map { |p|
@@ -43,7 +44,18 @@ end
 
 ##
 # Get the number of master images associated with the object by counting them
-# in the manifest-sha1.txt file.
+# in the manifest-sha1.txt or manifest-md5.txt file.
+#
+# OPenn manifest-sha1.txt format is:
+#
+#   0deb0ba96a5a5b67faa2bafae39752ad50184cc4  data/master/6837_0112.tif
+#   34416e6d8fdb9d309b5a6f016f53da08e6de9d15  data/web/6837_0165_web.jpg.xmp
+#
+# Digital Walters manifest-md5.txt format is:
+#
+#   bf2980cf7c91b210cd45d94665de8158 data/W.168/thumb/W168_000204_thumb.jpg
+#   8b8d15a7d1ed72bd0964ecce0c2b9601 data/W.168/sap/W168_000012_sap.jpg
+#   384055e9d9a5f153f5eb0292b0d56502 data/W.168/master/W168_000229_600.tif
 #
 # @param [String] object_path path to the object, relative to the OPenn '/Data'
 #                 directory; e.g., '0001/ljs103'
@@ -51,11 +63,12 @@ end
 def get_page_count object_path
   manifest_uri = find_manifest_url object_path
   raise "No manifest found for #{object_path}" unless manifest_uri
-  manifest = open(manifest_uri).readlines
-  # count the TIFFs or JPEGs in the `data/master` subdirectory
-  manifest.grep(%r{\s+data/master/.+\.(tif|jpg)$}).size
-end
+  manifest = open(manifest_uri).readlines.map &:chomp
 
+  # count the TIFFs or JPEGs in the `data/master` or `data/<SHELFMARK>/master`
+  # subdirectory
+  manifest.grep(%r{data/(\w[-\w.]+/)?master/.+\.(tif|jpg)$}).size
+end
 
 repo_number = ARGV.shift
 
@@ -69,9 +82,9 @@ csv_uri = sprintf "%s/%04d_contents.csv", OPENN_DATA_PATH, repo_number
 
 out_csv = sprintf("%04d_contents_pagecounts.csv", repo_number)
 
-print "Writing: #{out_csv}..."
+print "Writing: #{out_csv} ... "
 
-header = %w{document_id path title metadata_type created updated icount}
+header = %w{document_id path title metadata_type created updated icount repository_id repository_name repository_tag }
 CSV.open out_csv, 'wb+', headers: true do |csv|
   csv << header
   CSV.parse open(csv_uri).read, headers: true do |row|
