@@ -18,7 +18,7 @@ require 'net/http'
 # 1,0001/ljsmisc2,ljsmisc2,2014-11-03T23:42:45+00:00,2015-04-22T15:17:07+00:00,2,ljsmisc2
 #
 
-OPENN_DATA_PATH = "http://openn.library.upenn.edu/Data"
+OPENN_DATA_URL = "http://openn.library.upenn.edu/Data"
 MANIFEST_NAMES = %w{ manifest-sha1.txt manifest-md5.txt }.freeze
 
 ##
@@ -36,7 +36,7 @@ end
 #
 def find_manifest_url object_path
   MANIFEST_NAMES.map { |p|
-    sprintf "%s/%s/%s", OPENN_DATA_PATH, object_path, p
+    sprintf "%s/%s/%s", OPENN_DATA_URL, object_path, p
   }.find { |url| url_exists? url }
 end
 
@@ -72,7 +72,7 @@ repo_number = ARGV.shift
 
 abort "Please provide a collection number; got: #{repo_number}" unless repo_number =~ /\A\d+\Z/
 
-csv_uri = sprintf "%s/%04d_contents.csv", OPENN_DATA_PATH, repo_number
+csv_uri = sprintf "%s/%04d_contents.csv", OPENN_DATA_URL, repo_number
 
 ##
 # Input looks like:
