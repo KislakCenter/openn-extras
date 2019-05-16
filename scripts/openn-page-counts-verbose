@@ -4,6 +4,7 @@ require 'open-uri'
 require 'csv'
 require 'net/http'
 
+
 require_relative '../lib/openn'
 
 ##
@@ -20,28 +21,48 @@ require_relative '../lib/openn'
 # 4,0001/ljs489,Nawaz letter with seal,TEI,2014-11-03T23:40:23+00:00,2015-04-22T15:17:07+00:00,2
 # 5,0001/ljsmisc1,Sluby family indenture :,TEI,2014-11-03T23:41:42+00:00,2015-04-22T15:17:07+00:00,2
 #
+#
 
 repo_number = ARGV.shift
 
-abort "Please provide a collection number; got: #{repo_number}" unless repo_number =~ /\A\d+\Z/
+abort "Please provide a collection number; got: #{repo_number}" unless repo_number
 
-csv_uri = sprintf "%s/%04d_contents.csv", OPenn::OPENN_DATA_URL, repo_number
+repo_tag = OPenn::repo_tag repo_number
+
+# csv_uri = sprintf "%s/%s_contents.csv", OPenn::OPENN_DATA_URL, repo_tag
+csv_uri = OPenn::csv_url repo_number
 
 # document_id,path,title,metadata_type,created,updated
 # 1,0001/ljs103,Reproduction of Sienese book covers.,TEI,2014-11-03T23:13:18+00:00,2015-04-22T15:17:04+00:00
 # 2,0001/ljs201,Evangelista Torricelli letter to Marin Marsenne,TEI,2014-11-03T23:38:42+00:00,2015-04-22T15:17:05+00:00
 
-out_csv = sprintf("%04d_contents_pagecounts.csv", repo_number)
+out_csv = sprintf("%s_contents_verbose.csv", repo_tag)
 
 print "Writing: #{out_csv} ... "
 
-header = %w{document_id path title metadata_type created updated icount repository_id repository_name repository_tag }
+collections_data = OPenn::get_collections_data
+
+header = %w{document_id path title metadata_type created updated icount main_lang repository_id repository_name repository_tag }
 CSV.open out_csv, 'wb+', headers: true do |csv|
   csv << header
   CSV.parse open(csv_uri).read, headers: true do |row|
-    path = row['path']
-    row['page_count'] = OPenn::get_page_count(path)
-    csv << row
+    # binding.pry
+    out_row = header.inject({}) {|hash, head|
+      hash[head] = row[head]
+      hash
+    }
+
+    object_path                = row['path']
+    repo_id                    = object_path.split(%r{/}).first
+    out_row['created']         ||= OPenn::get_created row
+    out_row['updated']         ||= OPenn::get_updated row
+    out_row['icount']          = OPenn::get_page_count object_path
+    out_row['main_lang']       = OPenn::get_language object_path
+    out_row['repository_id']   = repo_id
+    out_row['repository_name'] = collections_data[repo_id]['collection_name']
+    out_row['repository_tag']  = collections_data[repo_id]['collection_tag']
+
+    csv << out_row
   end
 end
 

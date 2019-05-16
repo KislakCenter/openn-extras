@@ -4,6 +4,8 @@ require 'open-uri'
 require 'csv'
 require 'net/http'
 
+require_relative '../lib/openn'
+
 ##
 # For a given repository number (0001, 0002, 0003, etc.), pull down the CSV of
 # the repositories online document and rewrite it in brief format appending
@@ -18,61 +20,14 @@ require 'net/http'
 # 1,0001/ljsmisc2,ljsmisc2,2014-11-03T23:42:45+00:00,2015-04-22T15:17:07+00:00,2,ljsmisc2
 #
 
-OPENN_DATA_URL = "http://openn.library.upenn.edu/Data"
-MANIFEST_NAMES = %w{ manifest-sha1.txt manifest-md5.txt }.freeze
-
-##
-# Return true if the url yields a 200 response code
-def url_exists? url
-  url = URI.parse(url)
-  req = Net::HTTP.new(url.host, url.port)
-  req.use_ssl = true if url =~ /\Ahttps/
-  res = req.request_head(url.path)
-  res.code == '200'
-end
-
-##
-# Get the manifest for the given manuscript.
-#
-def find_manifest_url object_path
-  MANIFEST_NAMES.map { |p|
-    sprintf "%s/%s/%s", OPENN_DATA_URL, object_path, p
-  }.find { |url| url_exists? url }
-end
-
-##
-# Get the number of master images associated with the object by counting them
-# in the manifest-sha1.txt or manifest-md5.txt file.
-#
-# OPenn manifest-sha1.txt format is:
-#
-#   0deb0ba96a5a5b67faa2bafae39752ad50184cc4  data/master/6837_0112.tif
-#   34416e6d8fdb9d309b5a6f016f53da08e6de9d15  data/web/6837_0165_web.jpg.xmp
-#
-# Digital Walters manifest-md5.txt format is:
-#
-#   bf2980cf7c91b210cd45d94665de8158 data/W.168/thumb/W168_000204_thumb.jpg
-#   8b8d15a7d1ed72bd0964ecce0c2b9601 data/W.168/sap/W168_000012_sap.jpg
-#   384055e9d9a5f153f5eb0292b0d56502 data/W.168/master/W168_000229_600.tif
-#
-# @param [String] object_path path to the object, relative to the OPenn '/Data'
-#                 directory; e.g., '0001/ljs103'
-# @return [Integer]
-def get_page_count object_path
-  manifest_uri = find_manifest_url object_path
-  raise "No manifest found for #{object_path}" unless manifest_uri
-  manifest = open(manifest_uri).readlines.map &:chomp
-
-  # count the TIFFs or JPEGs in the `data/master` or `data/<SHELFMARK>/master`
-  # subdirectory
-  manifest.grep(%r{data/(\w[-\w.]+/)?master/.+\.(tif|jpg)$}).size
-end
-
 repo_number = ARGV.shift
 
-abort "Please provide a collection number; got: #{repo_number}" unless repo_number =~ /\A\d+\Z/
+abort "Please provide a collection number; got: #{repo_number}" unless repo_number
 
-csv_uri = sprintf "%s/%04d_contents.csv", OPENN_DATA_URL, repo_number
+repo_tag = OPenn::repo_tag repo_number
+
+# csv_uri = sprintf "%s/%s_contents.csv", OPenn::OPENN_DATA_URL, repo_tag
+csv_uri = OPenn::csv_url repo_number
 
 ##
 # Input looks like:
@@ -81,7 +36,7 @@ csv_uri = sprintf "%s/%04d_contents.csv", OPENN_DATA_URL, repo_number
 # 1,0001/ljs103,Reproduction of Sienese book covers.,TEI,2014-11-03T23:13:18+00:00,2015-04-22T15:17:04+00:00
 # 2,0001/ljs201,Evangelista Torricelli letter to Marin Marsenne,TEI,2014-11-03T23:38:42+00:00,2015-04-22T15:17:05+00:00
 
-out_csv = sprintf("%04d_contents_brief.csv", repo_number)
+out_csv = sprintf("%s_contents_brief.csv", repo_tag)
 
 print "Writing: #{out_csv} ... "
 
@@ -90,14 +45,15 @@ header = %w{id path base_dir created updated icount directive_name}
 CSV.open out_csv, 'wb+', headers: true do |csv|
   csv << header
   CSV.parse open(csv_uri).read, headers: true do |row|
-    path = row['path']
+    path                      = row['path']
 
-    (out_row ||=[]) << repo_number
-    out_row << path
-    out_row << File.basename(row['path'])
-    out_row << row['created'] << row['updated']
-    out_row << get_page_count(path)
-    out_row << File.basename(row['path'])
+    (out_row ||= {})['id']    = OPenn::get_repo_number(path).to_i
+    out_row['path']           = path
+    out_row['base_dir']       = File.basename path
+    out_row['created']        = OPenn::get_created row
+    out_row['updated']        = OPenn::get_updated row
+    out_row['icount']         = OPenn::get_page_count path
+    out_row['directive_name'] = File.basename path
 
     csv << out_row
   end
