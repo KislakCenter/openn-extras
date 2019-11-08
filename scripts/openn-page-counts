@@ -21,17 +21,33 @@ require_relative '../lib/openn'
 # 5,0001/ljsmisc1,Sluby family indenture :,TEI,2014-11-03T23:41:42+00:00,2015-04-22T15:17:07+00:00,2
 #
 
+COLLECTIONS = %w{ bibliophilly congregations genizah kislakcurated muslimworld diaries }
+def valid_repo? number
+  return true if number.to_s =~ /\A\d+\Z/
+  return true if COLLECTIONS.include? number.to_s.strip.downcase
+end # def valid_repo number
+
+def get_csv_uri number
+  return sprintf "%s/%04d_contents.csv", OPenn::OPENN_DATA_URL, number if number.to_s =~ /\A\d+\Z/
+  sprintf "%s/%s_contents.csv", OPenn::OPENN_DATA_URL, number.to_s.strip.downcase
+end # def normalized_repo number
+
+def get_out_csv number
+  return sprintf "%04d_contents.csv", number if number.to_s =~ /\A\d+\Z/
+  sprintf "%s_contents.csv", number.to_s.strip.downcase
+end # def normalized_repo number
+
 repo_number = ARGV.shift
 
-abort "Please provide a collection number; got: #{repo_number}" unless repo_number =~ /\A\d+\Z/
+abort "Please provide a collection number; got: #{repo_number}" unless valid_repo? repo_number
 
-csv_uri = sprintf "%s/%04d_contents.csv", OPenn::OPENN_DATA_URL, repo_number
+csv_uri = get_csv_uri repo_number
 
 # document_id,path,title,metadata_type,created,updated
 # 1,0001/ljs103,Reproduction of Sienese book covers.,TEI,2014-11-03T23:13:18+00:00,2015-04-22T15:17:04+00:00
 # 2,0001/ljs201,Evangelista Torricelli letter to Marin Marsenne,TEI,2014-11-03T23:38:42+00:00,2015-04-22T15:17:05+00:00
 
-out_csv = sprintf("%04d_contents_pagecounts.csv", repo_number)
+out_csv = get_out_csv repo_number
 
 print "Writing: #{out_csv} ... "
 
