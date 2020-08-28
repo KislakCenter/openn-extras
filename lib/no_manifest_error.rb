@@ -1,0 +1,2 @@
+class NoManifestError < StandardError
+end

@@ -42,29 +42,42 @@ print "Writing: #{out_csv} ... "
 
 collections_data = OPenn::get_collections_data
 
+errors = []
 header = %w{document_id path title metadata_type created updated icount main_lang repository_id repository_name repository_tag }
-CSV.open out_csv, 'wb+', headers: true do |csv|
-  csv << header
-  CSV.parse open(csv_uri).read, headers: true do |row|
-    # binding.pry
-    out_row = header.inject({}) {|hash, head|
-      hash[head] = row[head]
-      hash
-    }
+begin
+  CSV.open out_csv, 'wb+', headers: true do |csv|
+    csv << header
+    CSV.parse open(csv_uri).read, headers: true do |row|
+      # binding.pry
 
-    object_path                = row['path']
-    repo_id                    = object_path.split(%r{/}).first
-    out_row['created']         ||= OPenn::get_created row
-    out_row['updated']         ||= OPenn::get_updated row
-    out_row['icount']          = OPenn::get_page_count object_path
-    out_row['main_lang']       = OPenn::get_language object_path
-    out_row['repository_id']   = repo_id
-    out_row['repository_name'] = collections_data[repo_id]['collection_name']
-    out_row['repository_tag']  = collections_data[repo_id]['collection_tag']
+      out_row = header.inject({}) { |hash, head|
+        hash[head] = row[head]
+        hash
+      }
+      begin
+        object_path                = row['path']
+        repo_id                    = object_path.split(%r{/}).first
+        out_row['created']         ||= OPenn::get_created row
+        out_row['updated']         ||= OPenn::get_updated row
+        out_row['icount']          = OPenn::get_page_count object_path
+        out_row['main_lang']       = OPenn::get_language object_path
+        out_row['repository_id']   = repo_id
+        out_row['repository_name'] = collections_data[repo_id]['collection_name']
+        out_row['repository_tag']  = collections_data[repo_id]['collection_tag']
+        csv << out_row
+      rescue NoManifestError => e
+        errors << e.message
+      end
+    end
+  end
 
-    csv << out_row
+  puts "done."
+
+ensure
+  unless errors.empty?
+    STDERR.puts "WARNING: Errors found processing #{csv_uri}"
+    errors.each do |err|
+      STDERR.puts "ERROR: #{err}"
+    end
   end
 end
-
-
-puts "done."

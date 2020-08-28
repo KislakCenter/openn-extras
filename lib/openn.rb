@@ -1,16 +1,18 @@
+require_relative './no_manifest_error'
+
 module OPenn
-  OPENN_DATA_URL = 'http://openn.library.upenn.edu/Data'.freeze
-  # http://openn.library.upenn.edu/Data/0020/Data/WaltersManuscripts/ManuscriptDescriptions/
+  OPENN_DATA_URL = 'https://openn.library.upenn.edu/Data'.freeze
+  # https://openn.library.upenn.edu/Data/0020/Data/WaltersManuscripts/ManuscriptDescriptions/
   WALTERS_TEI_URL = "#{OPENN_DATA_URL}/0020/Data/WaltersManuscripts/ManuscriptDescriptions"
   COLLECTIONS_CSV = "#{OPENN_DATA_URL}/collections.csv"
   MANIFEST_NAMES = %w{ manifest-sha1.txt manifest-md5.txt }.freeze
 
   ##
   # Return true if the url yields a 200 response code
-  def self.url_exists? url
-    url = URI.parse(url)
+  def self.url_exists? url_string
+    url = URI.parse(url_string)
     req = Net::HTTP.new(url.host, url.port)
-    req.use_ssl = true if url =~ /\Ahttps/
+    req.use_ssl = true if url_string =~ /\Ahttps/
     res = req.request_head(url.path)
     res.code == '200'
   end
@@ -28,10 +30,10 @@ module OPenn
     basename = File.basename object_path
     tei_url = nil
     if object_path.start_with? '0020'
-      # http://openn.library.upenn.edu/Data/0020/Data/WaltersManuscripts/ManuscriptDescriptions/W4_tei.xml
+      # https://openn.library.upenn.edu/Data/0020/Data/WaltersManuscripts/ManuscriptDescriptions/W4_tei.xml
       tei_url = sprintf "%s/%s_tei.xml", WALTERS_TEI_URL, basename
     else
-      # http://openn.library.upenn.edu/Data/0022/mssHM_9999/data/mssHM_9999_TEI.xml
+      # https://openn.library.upenn.edu/Data/0022/mssHM_9999/data/mssHM_9999_TEI.xml
       tei_url = sprintf "%s/%s/data/%s_TEI.xml", OPENN_DATA_URL, object_path, basename
     end
     return tei_url if url_exists? tei_url
@@ -61,7 +63,7 @@ module OPenn
   # @return [Integer]
   def self.get_page_count object_path
     manifest_uri = find_manifest_url object_path
-    raise "No manifest found for #{object_path}" unless manifest_uri
+    raise NoManifestError, "No manifest found for #{object_path}" unless manifest_uri
     manifest = open(manifest_uri).readlines.map &:chomp
 
     # count the TIFFs or JPEGs in the `data/master` or `data/<SHELFMARK>/master`

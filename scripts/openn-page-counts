@@ -22,20 +22,27 @@ require_relative '../lib/openn'
 #
 
 COLLECTIONS = %w{ bibliophilly congregations genizah kislakcurated muslimworld diaries }
+
 def valid_repo? number
   return true if number.to_s =~ /\A\d+\Z/
   return true if COLLECTIONS.include? number.to_s.strip.downcase
-end # def valid_repo number
+end
+
+# def valid_repo number
 
 def get_csv_uri number
   return sprintf "%s/%04d_contents.csv", OPenn::OPENN_DATA_URL, number if number.to_s =~ /\A\d+\Z/
   sprintf "%s/%s_contents.csv", OPenn::OPENN_DATA_URL, number.to_s.strip.downcase
-end # def normalized_repo number
+end
+
+# def normalized_repo number
 
 def get_out_csv number
   return sprintf "%04d_contents.csv", number if number.to_s =~ /\A\d+\Z/
   sprintf "%s_contents.csv", number.to_s.strip.downcase
-end # def normalized_repo number
+end
+
+# def normalized_repo number
 
 repo_number = ARGV.shift
 
@@ -51,15 +58,30 @@ out_csv = get_out_csv repo_number
 
 print "Writing: #{out_csv} ... "
 
+errors = []
 header = %w{document_id path title metadata_type created updated icount repository_id repository_name repository_tag }
-CSV.open out_csv, 'wb+', headers: true do |csv|
-  csv << header
-  CSV.parse open(csv_uri).read, headers: true do |row|
-    path = row['path']
-    row['page_count'] = OPenn::get_page_count(path)
-    csv << row
+# begin black so we always print errors when we're done
+begin
+  CSV.open out_csv, 'wb+', headers: true do |csv|
+    csv << header
+    CSV.parse open(csv_uri).read, headers: true do |row|
+      path = row['path']
+      begin
+        row['page_count'] = OPenn::get_page_count(path)
+        csv << row
+      rescue NoManifestError => e
+        errors << e.message
+      end
+    end
+  end
+
+  puts "done."
+
+ensure
+  unless errors.empty?
+    STDERR.puts "WARNING: Errors found processing #{csv_uri}"
+    errors.each do |err|
+      STDERR.puts "ERROR: #{err}"
+    end
   end
 end
-
-
-puts "done."
