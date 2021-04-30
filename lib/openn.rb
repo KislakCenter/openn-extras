@@ -1,4 +1,5 @@
 require_relative './no_manifest_error'
+require_relative './openn/tei'
 
 module OPenn
   OPENN_DATA_URL = 'https://openn.library.upenn.edu/Data'.freeze
@@ -71,16 +72,9 @@ module OPenn
     manifest.grep(%r{data/(\w[-\w.]+/)?master/.+\.(tif|jpg)$}).size
   end
 
-  def self.get_language object_path
+  def self.get_tei object_path
     url = find_tei_url object_path
-    return unless url
-    #  78   frag = IO.read File.join(subdirectory, 'data/metadata.xml'), 8192
-    #  79   frag =~ /<dc:title>(.+)<\/dc:title>/m
-    #  80   "#$1".strip
-    URI.open(url).read(1<<16) =~ %r{mainLang="([^"]+)"}
-    match = $1
-    STDERR.puts "WARNING: No mainLang found for #{object_path}" unless match
-    match && match.strip
+    OPenn::Tei.new url
   end
 
   def self.get_collections_data

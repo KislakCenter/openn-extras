@@ -47,7 +47,7 @@ header = %w{document_id path title metadata_type created updated icount main_lan
 begin
   CSV.open out_csv, 'wb+', headers: true do |csv|
     csv << header
-    CSV.parse open(csv_uri).read, headers: true do |row|
+    CSV.parse URI.open(csv_uri).read, headers: true do |row|
       # binding.pry
 
       out_row = header.inject({}) { |hash, head|
@@ -56,11 +56,12 @@ begin
       }
       begin
         object_path                = row['path']
+        tei                        = OPenn::get_tei object_path
         repo_id                    = object_path.split(%r{/}).first
         out_row['created']         ||= OPenn::get_created row
         out_row['updated']         ||= OPenn::get_updated row
         out_row['icount']          = OPenn::get_page_count object_path
-        out_row['main_lang']       = OPenn::get_language object_path
+        out_row['main_lang']       = tei.main_lang
         out_row['repository_id']   = repo_id
         out_row['repository_name'] = collections_data[repo_id]['collection_name']
         out_row['repository_tag']  = collections_data[repo_id]['collection_tag']

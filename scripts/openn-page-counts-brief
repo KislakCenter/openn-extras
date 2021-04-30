@@ -45,7 +45,7 @@ header = %w{id path base_dir created updated icount directive_name}
 begin
   CSV.open out_csv, 'wb+', headers: true do |csv|
     csv << header
-    CSV.parse open(csv_uri).read, headers: true do |row|
+    CSV.parse URI.open(csv_uri).read, headers: true do |row|
       path = row['path']
 
       begin

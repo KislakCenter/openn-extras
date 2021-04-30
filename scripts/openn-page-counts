@@ -64,7 +64,7 @@ header = %w{document_id path title metadata_type created updated icount reposito
 begin
   CSV.open out_csv, 'wb+', headers: true do |csv|
     csv << header
-    CSV.parse open(csv_uri).read, headers: true do |row|
+    CSV.parse URI.open(csv_uri).read, headers: true do |row|
       path = row['path']
       begin
         row['page_count'] = OPenn::get_page_count(path)
